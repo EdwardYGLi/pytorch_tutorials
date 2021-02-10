@@ -20,14 +20,17 @@ def eval(model, out_dir, data, labels, epoch, device, fig, axs):
     with torch.no_grad():
         output = model(data)
         # take the first 16 images
-
         for ind, ax in enumerate(axs):
             ax.imshow(data[ind][0].detach().cpu().numpy(), cmap="gray", interpolation="none")
             ax.set_title("Label: {} Pred: {}".format(target[ind].detach().cpu().numpy(),
-                                                  output.data.max(1, keepdim=True)[1][ind].item()))
+                                                  output.data.max(1, keepdim=True)[1][ind].item()),fontsize=20)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.set_aspect('equal')
+
         plt.savefig(os.path.join(out_dir, "eval_epoch_{}.png".format(epoch)))
 
-
+    exit()
 def train(args):
     # seed everything for reproducibility
     torch.manual_seed(args.seed)
@@ -58,9 +61,9 @@ def train(args):
     example_data, example_labels = next(iter(validation_dataloader))
     # reuse same figure
     fig, axs = plt.subplots(4, 4, figsize=(20, 20), facecolor='w', edgecolor='k', num=1)
-    fig.subplots_adjust(hspace=.5, wspace=.001)
-    plt.xticks([])
-    plt.yticks([])
+    fig.subplots_adjust(hspace=.1, wspace=.1)
+    fig.tight_layout()
+
     axs = axs.ravel()
 
     dataloaders = {"val": training_dataloader,
