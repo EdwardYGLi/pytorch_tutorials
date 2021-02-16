@@ -8,10 +8,8 @@ class MLPClassifier(nn.Module):
         super(MLPClassifier,self).__init__()
         # define our classifier
         self.layer_1 = nn.Linear(28*28, 1024)
-        self.layer_2 = nn.Linear(1024, 512)
-        self.layer_3 = nn.Linear(512, 256)
-        self.layer_4 = nn.Linear(256,128)
-        self.classify = nn.Linear(128, 10)
+        self.layer_2 = nn.Linear(1024,512)
+        self.classify = nn.Linear(512, 10)
 
     def forward(self,x):
         # flatten image from [b,28,28] to [b,28*28]
@@ -19,8 +17,6 @@ class MLPClassifier(nn.Module):
         # forward through the graph with relu activation.
         x = F.relu(self.layer_1(x))
         x = F.relu(self.layer_2(x))
-        x = F.relu(self.layer_3(x))
-        x = F.relu(self.layer_4(x))
         x = F.relu(self.classify(x))
         return F.log_softmax(x)
 
