@@ -12,7 +12,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 
 from data import MnistDataset
-from model import MLPClassifier , TestClassifier
+from model import MLPClassifier
 
 
 def eval(model, out_dir, data, labels, epoch, device, fig, axs):
@@ -30,7 +30,7 @@ def eval(model, out_dir, data, labels, epoch, device, fig, axs):
 
         plt.savefig(os.path.join(out_dir, "eval_epoch_{}.png".format(epoch)))
 
-    exit()
+
 def train(args):
     # seed everything for reproducibility
     torch.manual_seed(args.seed)
