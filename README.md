@@ -147,8 +147,8 @@ Tasks:
 
    -  **CHOICE 1**: Create a plot of the latent distribution of the neural network and store this image across time. What happens when you sample a latent point and try to decode it ?
       
-   -  **CHOICE 2**: If we want to adopt this network to denoise or upsample the image instead. What modifications do we need and how do we test it's effectiveness.
-      *  Pick one of the two problems and implement any changes needed.  
+   -  **CHOICE 2**: If we want to adopt this network to either denoise or upsample the image instead. What modifications do we need and how do we test its effectiveness.
+      *  Pick one of the two problems. 
       *  Create a new sub folder and modify any code needed to solve for this task. 
       *  Create any additional visualizations to help understand task effectiveness. 
 
