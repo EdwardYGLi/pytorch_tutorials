@@ -1,34 +1,44 @@
 """
 Created by Edward Li at 2/9/21
 """
+"""
+Created by Edward Li at 2/9/21
+"""
 import argparse
 import datetime
 import os
 
 import matplotlib.pyplot as plt
 import torch
-import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
 from data import MnistDataset
-from model import CNNClassifier
+from model import ConvolutionalAutoEncoder
+
+
+def calculate_psnr(pred, target):
+    # implement PSNR (peak to peak signal to noise ratio)
+    # between prediction and target here
+    return 0
+
+
+def calculate_ssim(pred, target):
+    # implement SSIM (structured similarity index),
+    # between prediction and target here
+    return 0
+
+
+def my_loss_fn(pred, target):
+    # define your loss function here. or define it whithin the loop.
+    return 0
 
 
 def eval(model, out_dir, data, labels, epoch, device, fig, axs):
     data, target = data.to(device), labels.to(device)
     with torch.no_grad():
         output = model(data)
-        # take the first 16 images
-        for ind, ax in enumerate(axs):
-            ax.imshow(data[ind][0].detach().cpu().numpy(), cmap="gray", interpolation="none")
-            ax.set_title("Label: {} Pred: {}".format(target[ind].detach().cpu().numpy(),
-                                                  output.data.max(1, keepdim=True)[1][ind].item()),fontsize=20)
-            ax.set_xticks([])
-            ax.set_yticks([])
-            ax.set_aspect('equal')
-
-        plt.savefig(os.path.join(out_dir, "eval_epoch_{}.png".format(epoch)))
+        # create some plots here to visualize the outputs, you can also use cv2 instead of matplotlib.
 
 
 def train(args):
@@ -39,7 +49,7 @@ def train(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # create our model
-    model = CNNClassifier().to(device)
+    model = ConvolutionalAutoEncoder().to(device)
     print("model")
     print(model)
 
@@ -92,10 +102,12 @@ def train(args):
 
             back_prop = phase == "train"
             epoch_loss = 0
-            correct = 0
-            # in addition to accuracy, implement and calculate per class f1 score/precision/recall/accuarcy.
+            psnr = 0
+            ssim = 0
             print(phase)
             with torch.set_grad_enabled(back_prop):
+                # [hint] you can modify what your target is for the auto encoder training.
+                # instead of using classification labels as target
                 for b, (data, target) in enumerate(dataloader):
                     data, target = data.to(device), target.to(device)
 
@@ -103,17 +115,20 @@ def train(args):
                         # clear gradients
                         optimizer.zero_grad()
                     output = model(data)
-                    # use negative log likelinhood loss
-                    loss = F.nll_loss(output, target)
+
+                    # Select a suitable loss function here.
+                    loss = my_loss_fn(output, target)
                     if back_prop:
                         # get gradients
                         loss.backward()
                         # update weights
                         optimizer.step()
                     else:
-                        # add logic here for the per class f1/precision/recall/accuracy, etc.
-                        pred = output.data.max(1, keepdim=True)[1]
-                        correct += pred.eq(target.data.view_as(pred)).sum()
+                        # implement PSNR (peak to peak signal to noise ratio)
+                        # and SSIM (structured similarity index)
+                        # between prediction and target
+                        psnr += calculate_psnr(output, target)
+                        ssim += calculate_ssim(output, target)
                     epoch_loss += loss.item()
 
                     if b % args.log_interval == 0 and phase == "train":
@@ -126,11 +141,12 @@ def train(args):
                         losses_charts[phase]["loss"].append(loss.item())
                         losses_charts[phase]["step"].append(b * args.batch_size + (epoch) * len(dataloader.dataset))
 
+                # we will only aggregate loss for validation on an epoch basis
                 if phase == "val":
-                    # we will only aggregate loss for validation on an epoch basis
                     losses_charts[phase]["loss"].append(epoch_loss / len(dataloader.dataset))
                     losses_charts[phase]["step"].append(epoch * len(dataloaders["train"].dataset))
-                    losses_charts[phase]["accuracy"].append(100 * correct / len(dataloader.dataset))
+                    losses_charts[phase]["psnr"].append(psnr / len(dataloader.dataset))
+                    losses_charts[phase]["ssim"].append(psnr / len(dataloader.dataset))
 
     plt.figure(2)
     plt.plot(losses_charts["train"]["step"], losses_charts["train"]["loss"], color="blue")
@@ -141,14 +157,15 @@ def train(args):
     plt.savefig(os.path.join(out_dir, "loss_charts.png"))
 
     plt.figure(3)
-    plt.plot(losses_charts["val"]["step"], losses_charts["val"]["accuracy"], color="Red")
-    plt.legend(['Test Accuracy'], loc='upper right')
+    plt.plot(losses_charts["val"]["step"], losses_charts["val"]["psnr"], color="Red")
+    plt.legend(['PSNR (db)'], loc='upper right')
     plt.xlabel('number of training examples seen')
-    plt.ylabel('Test accuracy')
-    plt.savefig(os.path.join(out_dir, "accuracy.png"))
+    plt.ylabel('Test PSNR')
+    plt.savefig(os.path.join(out_dir, "psnr.png"))
     plt.show()
 
-    # add any figures as needed.
+    # add a figure for ssim.
+    # at the end of training report the hyper parameters used and the best metrics achieved.
 
 
 if __name__ == "__main__":
