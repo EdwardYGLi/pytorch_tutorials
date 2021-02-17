@@ -12,7 +12,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 
 from data import MnistDataset
-from model import MLPClassifier
+from model import CNNClassifier
 
 
 def eval(model, out_dir, data, labels, epoch, device, fig, axs):
@@ -37,9 +37,8 @@ def train(args):
     torch.backends.cudnn.benchmark = False
     # prefer use Gpu for everything
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
     # create our model
-    model = MLPClassifier().to(device)
+    model = CNNClassifier().to(device)
     print("model")
     print(model)
 
@@ -93,6 +92,7 @@ def train(args):
             back_prop = phase == "train"
             epoch_loss = 0
             correct = 0
+            # in addition to accuracy, implement and calculate per class f1 score/precision/recall/accuarcy.
             print(phase)
             with torch.set_grad_enabled(back_prop):
                 for b, (data, target) in enumerate(dataloader):
@@ -110,6 +110,7 @@ def train(args):
                         # update weights
                         optimizer.step()
                     else:
+                        # add logic here for the per class f1/precision/recall/accuracy, etc.
                         pred = output.data.max(1, keepdim=True)[1]
                         correct += pred.eq(target.data.view_as(pred)).sum()
                     epoch_loss += loss.item()
@@ -124,8 +125,8 @@ def train(args):
                         losses_charts[phase]["loss"].append(loss.item())
                         losses_charts[phase]["step"].append(b * args.batch_size + (epoch) * len(dataloader.dataset))
 
-                # we will only aggregate loss for validation on an epoch basis
                 if phase == "val":
+                    # we will only aggregate loss for validation on an epoch basis
                     losses_charts[phase]["loss"].append(epoch_loss / len(dataloader.dataset))
                     losses_charts[phase]["step"].append(epoch * len(dataloaders["train"].dataset))
                     losses_charts[phase]["accuracy"].append(100 * correct / len(dataloader.dataset))
@@ -146,6 +147,7 @@ def train(args):
     plt.savefig(os.path.join(out_dir, "accuracy.png"))
     plt.show()
 
+    # add any figures as needed.
 
 
 if __name__ == "__main__":
