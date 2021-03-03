@@ -18,7 +18,7 @@ There are a total of two labs for this year's computer vision T school. The focu
 To get started:  
 1. clone this repo in your local machine. Preferably you should have ssh setup on your machine already.
 
-    `git clone git@github.ibm.com:Edward-Li/Computer_Vision_TSchool.git`
+    `git clone git@github.ibm.com:Edward-Li/computer_vision_tschool_labs.git`
 
 2. Create a virtual environment at a location of your choice if you haven't already:
     
