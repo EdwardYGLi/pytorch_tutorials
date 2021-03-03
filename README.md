@@ -30,7 +30,7 @@ To get started:
 
 3. Install requirements from the requirements file after cd into the project folder:
 
-    `pip install requirements.txt`
+    `pip install -r requirements.txt`
     
      Requirements:
    
