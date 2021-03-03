@@ -65,8 +65,8 @@ def train(args):
 
     axs = axs.ravel()
 
-    dataloaders = {"val": training_dataloader,
-                   "train": validation_dataloader}
+    dataloaders = {"val": validation_dataloader,
+                   "train": training_dataloader}
 
     losses_charts = {"val":
                          {"loss": [],
