@@ -10,6 +10,7 @@ import os
 
 import matplotlib.pyplot as plt
 import torch
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
@@ -21,19 +22,38 @@ def calculate_psnr(pred, target):
     # implement PSNR (peak to peak signal to noise ratio) or SSIM (structured similarity index),
     # rename your function if implementing SSIM
     # between prediction and target here
-    return 0
+    mse = torch.mean((pred - target) ** 2)
+    return 20 * torch.log10(1.0 / torch.sqrt(mse))
 
 
 def my_loss_fn(pred, target):
     # define your loss function here. or define it whithin the loop.
-    return 0
+    return F.mse_loss(pred, target)
 
 
 def eval(model, out_dir, data, labels, epoch, device, fig, axs):
     data, target = data.to(device), labels.to(device)
     with torch.no_grad():
-        output = model(data)
+        output, latent = model(data)
         # create some plots here to visualize the outputs, you can also use cv2 instead of matplot lib.
+        for i in range(0, len(axs), 2):
+            ax1 = axs[i]
+            ax2 = axs[i+1]
+            ind = i//2
+            im = output[ind][0].detach().cpu().numpy()
+            gt = labels[ind][0].detach().cpu().numpy()
+            ax1.imshow(im, cmap="gray", interpolation="none")
+            ax2.imshow(gt, cmap="gray", interpolation="none")
+            ax1.set_title("pred",fontsize=20)
+            ax2.set_title("gt",fontsize=20)
+            ax1.set_xticks([])
+            ax1.set_yticks([])
+            ax1.set_aspect('equal')
+            ax2.set_xticks([])
+            ax2.set_yticks([])
+            ax2.set_aspect('equal')
+
+    plt.savefig(os.path.join(out_dir, "eval_epoch_{}.png".format(epoch)))
 
 
 def train(args):
@@ -76,7 +96,7 @@ def train(args):
 
     losses_charts = {"val":
                          {"loss": [],
-                          "accuracy": [],
+                          "psnr": [],
                           "step": []},
                      "train":
                          {"loss": [],
@@ -91,7 +111,7 @@ def train(args):
             else:
                 model.eval()
                 # generate and store some eval images
-                eval(model, out_dir, example_data, example_labels, epoch, device, fig, axs)
+                eval(model, out_dir, example_data, example_data, epoch, device, fig, axs)
                 # save a checkpoint
                 torch.save(model.state_dict(), os.path.join(out_dir, "epoch_{}_ckpt.pt".format(epoch)))
 
@@ -103,12 +123,12 @@ def train(args):
                 # [hint] you can modify what your target is for the auto encoder training.
                 # instead of using classification labels as target
                 for b, (data, target) in enumerate(dataloader):
-                    data, target = data.to(device), target.to(device)
+                    data, target = data.to(device), data.to(device)
 
                     if back_prop:
                         # clear gradients
                         optimizer.zero_grad()
-                    output = model(data)
+                    output, latent = model(data)
 
                     # Select a suitable loss function here.
                     loss = my_loss_fn(output, target)
