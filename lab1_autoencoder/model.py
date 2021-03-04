@@ -6,23 +6,19 @@ class FullyConectedAutoEncoder(nn.Module):
         super(FullyConectedAutoEncoder, self).__init__()
         # define our fully connected auto-encoder here without using convolution layers
         self.encoder = nn.Sequential(
-            nn.Linear(28 * 28, 512, bias=False),
+            nn.Linear(28 * 28, 1024, bias=False),
             nn.ReLU(),
-            nn.Linear(512, 128, bias=False),
+            nn.Linear(1024, 128, bias=False),
             nn.ReLU(),
-            nn.Linear(128, 64, bias=False),
-            nn.ReLU(),
-            nn.Linear(64, 16, bias=False),
+            nn.Linear(128, 8, bias=False),
             nn.ReLU(),
         )
         self.decoder = nn.Sequential(
-            nn.Linear(16, 64, bias=False),
+            nn.Linear(8, 128, bias=False),
             nn.ReLU(),
-            nn.Linear(64, 128, bias=False),
+            nn.Linear(128, 1024, bias=False),
             nn.ReLU(),
-            nn.Linear(128, 512, bias=False),
-            nn.ReLU(),
-            nn.Linear(512, 784, bias=False),
+            nn.Linear(1024, 784, bias=False),
             nn.ReLU(),
         )
 
