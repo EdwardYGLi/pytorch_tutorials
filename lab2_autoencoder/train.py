@@ -241,6 +241,8 @@ def train(args):
                     losses_charts[phase]["ssim"].append(ssim / len(dataloader))
                     plot_latents(latents, labels, out_dir, epoch)
 
+    torch.save(model.state_dict(), os.path.join(out_dir, "model.pt"))
+
     plt.figure(2)
     plt.plot(losses_charts["train"]["step"], losses_charts["train"]["loss"], color="blue")
     plt.plot(losses_charts["val"]["step"], losses_charts["val"]["loss"], color="Red")
