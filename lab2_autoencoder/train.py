@@ -7,6 +7,7 @@ Created by Edward Li at 2/9/21
 import argparse
 import datetime
 import os
+import warnings
 
 import cv2
 import matplotlib.pyplot as plt
@@ -16,11 +17,14 @@ import seaborn as sns
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
+from skimage.util import random_noise
 from sklearn.manifold import TSNE
 from torch.utils.data import DataLoader
 
 from data import MnistDataset
 from model import ConvolutionalAutoEncoder
+
+warnings.filterwarnings("ignore")
 
 
 def calculate_psnr(pred, target):
@@ -72,8 +76,17 @@ def my_loss_fn(pred, target):
     return F.mse_loss(pred, target)
 
 
-def eval(model, out_dir, data, labels, epoch, device, fig, axs):
-    data, target = data.to(device), labels.to(device)
+def eval(model, out_dir, data, epoch, device, axs):
+    if args.training_type == "denoiser":
+        target = data.to(device)
+        data = torch.tensor(random_noise(data, mode='gaussian', mean=0, var=0.05, clip=True), dtype=torch.float32).to(
+            device)
+    elif args.training_type == "autoencoder":
+        data, target = data.to(device), data.to(device)
+    elif args.training_type == "upsampler":
+        target = data.to(device)
+        data = F.interpolate(data, scale_factor=0.5).to(device)
+
     with torch.no_grad():
         output, latent = model(data)
         # create some plots here to visualize the outputs, you can also use cv2 instead of matplot lib.
@@ -81,12 +94,25 @@ def eval(model, out_dir, data, labels, epoch, device, fig, axs):
             ax1 = axs[i]
             ax2 = axs[i + 1]
             ind = i // 2
-            im = output[ind][0].detach().cpu().numpy()
-            gt = labels[ind][0].detach().cpu().numpy()
+            if args.training_type == "denoiser":
+                im = data[ind][0].detach().cpu().numpy()
+                gt = output[ind][0].detach().cpu().numpy()
+                im_title = "noisy image"
+                gt_title = "denoised output"
+            else:
+                im = output[ind][0].detach().cpu().numpy()
+                gt = target[ind][0].detach().cpu().numpy()
+                if args.training_type == "upsampler":
+                    im_title = "upsampled"
+                    gt_title = "gt"
+                else:
+                    im_title = "pred"
+                    gt_title = "gt"
+
             ax1.imshow(im, cmap="gray", interpolation="none")
             ax2.imshow(gt, cmap="gray", interpolation="none")
-            ax1.set_title("pred", fontsize=20)
-            ax2.set_title("gt", fontsize=20)
+            ax1.set_title(im_title, fontsize=20)
+            ax2.set_title(gt_title, fontsize=20)
             ax1.set_xticks([])
             ax1.set_yticks([])
             ax1.set_aspect('equal')
@@ -98,10 +124,12 @@ def eval(model, out_dir, data, labels, epoch, device, fig, axs):
 
 
 def plot_latents(latents, labels, out_dir, epoch):
+    # use a dataframe for this so we can pass into scikit learn
     feat_cols = ['latent_' + str(i) for i in range(latents.shape[1])]
     df = pd.DataFrame(latents, columns=feat_cols)
     df['class'] = labels
     df['label'] = df['class'].apply(lambda i: str(i))
+    # play around with perplexity should be between 5-50.
     tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
     tsne_results = tsne.fit_transform(df)
     df['tsne-2d-one'] = tsne_results[:, 0]
@@ -127,12 +155,13 @@ def train(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # create our model
-    model = ConvolutionalAutoEncoder().to(device)
+    model = ConvolutionalAutoEncoder(upsample=args.training_type == "upsampler").to(device)
     print("model")
     print(model)
 
     now = datetime.datetime.now()
-    out_dir = os.path.join(args.output_dir, now.strftime("%Y-%m-%d_%H_%M") + "_{}".format(model.__class__.__name__))
+    out_dir = os.path.join(args.output_dir, now.strftime("%Y-%m-%d_%H_%M") + "_{}_{}".format(model.__class__.__name__,
+                                                                                             args.training_type))
     # make output directory
     os.makedirs(out_dir, exist_ok=True)
 
@@ -175,7 +204,7 @@ def train(args):
             else:
                 model.eval()
                 # generate and store some eval images
-                eval(model, out_dir, example_data, example_data, epoch, device, fig, axs)
+                eval(model, out_dir, example_data, epoch, device, axs)
                 # save a checkpoint
                 torch.save(model.state_dict(), os.path.join(out_dir, "epoch_{}_ckpt.pt".format(epoch)))
 
@@ -190,7 +219,15 @@ def train(args):
                 # [hint] you can modify what your target is for the auto encoder training.
                 # instead of using classification labels as target
                 for b, (data, label) in enumerate(dataloader):
-                    data, target = data.to(device), data.to(device)
+                    if args.training_type == "denoiser":
+                        target = data.to(device)
+                        data = torch.tensor(random_noise(data, mode='gaussian', mean=0, var=0.05, clip=True),
+                                            dtype=torch.float32).to(device)
+                    elif args.training_type == "autoencoder":
+                        data, target = data.to(device), data.to(device)
+                    elif args.training_type == "upsampler":
+                        target = data.to(device)
+                        data = F.interpolate(data, scale_factor=0.5).to(device)
 
                     if back_prop:
                         # clear gradients
@@ -239,7 +276,8 @@ def train(args):
                     losses_charts[phase]["step"].append(epoch * len(dataloaders["train"].dataset))
                     losses_charts[phase]["psnr"].append(psnr / len(dataloader))
                     losses_charts[phase]["ssim"].append(ssim / len(dataloader))
-                    plot_latents(latents, labels, out_dir, epoch)
+                    if args.tsne:
+                        plot_latents(latents, labels, out_dir, epoch)
 
     torch.save(model.state_dict(), os.path.join(out_dir, "model.pt"))
 
@@ -275,6 +313,9 @@ if __name__ == "__main__":
     parser.add_argument("--seed", help="random seed for reproducibility", type=int, default=24)
     parser.add_argument("--log_interval", help="interval for logging cool info", type=int, default=10)
     parser.add_argument("--output_dir", help="directory for storing outputs", type=str, default="./output/")
+    parser.add_argument("--tsne", help="plot tsne", action="store_true")
+    parser.add_argument("--training_type", help="type of training (denoiser,upsampler,autoencoder)",
+                        default="autoencoder")
     args = parser.parse_args()
 
     train(args)

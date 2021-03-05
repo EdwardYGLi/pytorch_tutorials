@@ -2,20 +2,32 @@ import torch.nn as nn
 
 
 class ConvolutionalAutoEncoder(nn.Module):
-    def __init__(self, code_size=10):
+    def __init__(self, code_size=10, upsample=False):
         super(ConvolutionalAutoEncoder, self).__init__()
         self.code_size = code_size
         # define our convolutional auto-encoder here without using convolution layers
-        self.encoder = nn.Sequential(
-            nn.Conv2d(1, 16, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.ReLU(),
-        )
+        if not upsample:
+            self.encoder = nn.Sequential(
+                nn.Conv2d(1, 16, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.ReLU(),
+                nn.MaxPool2d(kernel_size=2, stride=2),
+                nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.ReLU(),
+                nn.MaxPool2d(kernel_size=2, stride=2),
+                nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.ReLU(),
+            )
+        else:
+            self.encoder = nn.Sequential(
+                nn.Conv2d(1, 16, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.ReLU(),
+                nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.ReLU(),
+                nn.MaxPool2d(kernel_size=2, stride=2),
+                nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.ReLU(),
+            )
+
         self.latent_shape = [64, 7, 7]
         self.latent_enc = nn.Linear(7 * 7 * 64, self.code_size)
 
