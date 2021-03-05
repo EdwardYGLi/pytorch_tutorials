@@ -38,9 +38,11 @@ def calculate_ssim(pred, target):
     # implement SSIM (structured similarity index),
     # between prediction and target here\
 
+
+    # original dimension (b, c, h, w)
     pred = pred.detach().cpu().permute(0, 2, 3, 1).numpy()
     target = target.detach().cpu().permute(0, 2, 3, 1).numpy()
-
+    # dimension (b, h,w,c)
     # we should implement this in pytorch native tensor operations for speed,
     # but for readability we will do this the slow way (looping)
     # for now.
