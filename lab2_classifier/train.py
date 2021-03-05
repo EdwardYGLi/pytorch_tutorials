@@ -68,6 +68,7 @@ def plot_results(losses_charts, out_dir):
     plt.ylabel('Test accuracy')
     plt.savefig(os.path.join(out_dir, "accuracy.png"))
 
+    # for each class plot a figure
     for cls in range(10):
         cls_str = str(cls)
         precision = []
@@ -81,6 +82,10 @@ def plot_results(losses_charts, out_dir):
         plt.plot(losses_charts["val"]["step"], precision, color="Green")
         plt.plot(losses_charts["val"]["step"], recall, color="Blue")
         plt.plot(losses_charts["val"]["step"], f1_score, color="Cyan")
+        best_ind = np.argmax(f1_score)
+        plt.plot(losses_charts["val"]["step"][best_ind], f1_score[best_ind], 'b*')
+        plt.text(losses_charts["val"]["step"][best_ind], f1_score[best_ind],
+                 'Best f1-score: {}'.format(f1_score[best_ind]), horizontalalignment='right')
         plt.legend(['Test Precision', 'Test recall', 'Test F1 score'], loc='lower right')
         plt.xlabel('number of training examples seen')
         plt.ylabel('Precision')
