@@ -6,9 +6,11 @@ import datetime
 import os
 
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
+from sklearn import metrics
 from torch.utils.data import DataLoader
 
 from data import MnistDataset
@@ -23,12 +25,67 @@ def eval(model, out_dir, data, labels, epoch, device, fig, axs):
         for ind, ax in enumerate(axs):
             ax.imshow(data[ind][0].detach().cpu().numpy(), cmap="gray", interpolation="none")
             ax.set_title("Label: {} Pred: {}".format(target[ind].detach().cpu().numpy(),
-                                                  output.data.max(1, keepdim=True)[1][ind].item()),fontsize=20)
+                                                     output.data.max(1, keepdim=True)[1][ind].item()), fontsize=20)
             ax.set_xticks([])
             ax.set_yticks([])
             ax.set_aspect('equal')
 
         plt.savefig(os.path.join(out_dir, "eval_epoch_{}.png".format(epoch)))
+
+
+def plot_results(losses_charts, out_dir):
+    # plot our loss and accuracy charts
+    plt.figure(2)
+    plt.plot(losses_charts["train"]["step"], losses_charts["train"]["loss"], color="blue")
+    plt.plot(losses_charts["val"]["step"], losses_charts["val"]["loss"], color="Red")
+    plt.legend(['Train Loss', 'Test Loss'], loc='upper right')
+    plt.xlabel('number of training examples seen')
+    plt.ylabel('negative log likelihood loss')
+    plt.savefig(os.path.join(out_dir, "loss_charts.png"))
+
+    plt.figure(3)
+    losses_charts["val"]["accuracy"] = []
+    losses_charts["val"]["precision"] = []
+    losses_charts["val"]["recall"] = []
+    losses_charts["val"]["f1"] = []
+    for stat in losses_charts["val"]["stats"]:
+        losses_charts["val"]["accuracy"].append(stat["accuracy"])
+        losses_charts["val"]["precision"].append(stat['weighted avg']["precision"])
+        losses_charts["val"]["recall"].append(stat['weighted avg']["recall"])
+        losses_charts["val"]["f1"].append(stat['weighted avg']["f1-score"])
+
+    plt.plot(losses_charts["val"]["step"], losses_charts["val"]["accuracy"], color="Red")
+    plt.plot(losses_charts["val"]["step"], losses_charts["val"]["precision"], color="Green")
+    plt.plot(losses_charts["val"]["step"], losses_charts["val"]["recall"], color="Blue")
+    plt.plot(losses_charts["val"]["step"], losses_charts["val"]["f1"], color="Cyan")
+
+    best_ind = np.argmax(losses_charts["val"]["accuracy"])
+    plt.plot(losses_charts["val"]["step"][best_ind], losses_charts["val"]["accuracy"][best_ind], 'b*')
+    plt.text(losses_charts["val"]["step"][best_ind], losses_charts["val"]["accuracy"][best_ind],
+             'Best Accuracy: {}'.format(losses_charts["val"]["accuracy"][best_ind]), horizontalalignment='right')
+    plt.legend(['Test Accuracy', 'Test Precision', 'Test recall', 'Test F1 score'], loc='lower right')
+    plt.xlabel('number of training examples seen')
+    plt.ylabel('Test accuracy')
+    plt.savefig(os.path.join(out_dir, "accuracy.png"))
+
+    for cls in range(10):
+        cls_str = str(cls)
+        precision = []
+        recall = []
+        f1_score = []
+        for ind, stat in enumerate(losses_charts["val"]["stats"]):
+            precision.append(stat[cls_str]["precision"])
+            recall.append(stat[cls_str]["recall"])
+            f1_score.append(stat[cls_str]["f1-score"])
+        plt.figure(cls + 4)
+        plt.plot(losses_charts["val"]["step"], precision, color="Green")
+        plt.plot(losses_charts["val"]["step"], recall, color="Blue")
+        plt.plot(losses_charts["val"]["step"], f1_score, color="Cyan")
+        plt.legend(['Test Precision', 'Test recall', 'Test F1 score'], loc='lower right')
+        plt.xlabel('number of training examples seen')
+        plt.ylabel('Precision')
+        plt.title("{} class statistics".format(cls_str))
+    plt.savefig(os.path.join(out_dir, "{}_class_stats.png".format(cls_str)))
 
 
 def train(args):
@@ -70,8 +127,8 @@ def train(args):
 
     losses_charts = {"val":
                          {"loss": [],
-                          "accuracy": [],
-                          "step": []},
+                          "step": [],
+                          "stats": []},
                      "train":
                          {"loss": [],
                           "step": []}
@@ -91,9 +148,11 @@ def train(args):
 
             back_prop = phase == "train"
             epoch_loss = 0
-            correct = 0
             # in addition to accuracy, implement and calculate per class f1 score/precision/recall/accuarcy.
             print(phase)
+
+            pred_epoch = []
+            targ_epoch = []
             with torch.set_grad_enabled(back_prop):
                 for b, (data, target) in enumerate(dataloader):
                     data, target = data.to(device), target.to(device)
@@ -111,8 +170,12 @@ def train(args):
                         optimizer.step()
                     else:
                         # add logic here for the per class f1/precision/recall/accuracy, etc.
-                        pred = output.data.max(1, keepdim=True)[1]
-                        correct += pred.eq(target.data.view_as(pred)).sum()
+                        pred = output.data.max(1, keepdim=True)[1].view(-1)
+                        targ = target.data.view_as(pred).detach().cpu().numpy()
+                        pred = pred.detach().cpu().numpy()
+                        pred_epoch.extend(pred)
+                        targ_epoch.extend(targ)
+
                     epoch_loss += loss.item()
 
                     if b % args.log_interval == 0 and phase == "train":
@@ -126,26 +189,15 @@ def train(args):
                         losses_charts[phase]["step"].append(b * args.batch_size + (epoch) * len(dataloader.dataset))
 
                 if phase == "val":
+                    losses_charts[phase]["stats"].append(
+                        metrics.classification_report(targ_epoch, pred_epoch, output_dict=True))
+
                     # we will only aggregate loss for validation on an epoch basis
                     losses_charts[phase]["loss"].append(epoch_loss / len(dataloader.dataset))
                     losses_charts[phase]["step"].append(epoch * len(dataloaders["train"].dataset))
-                    losses_charts[phase]["accuracy"].append(100 * correct / len(dataloader.dataset))
 
-    plt.figure(2)
-    plt.plot(losses_charts["train"]["step"], losses_charts["train"]["loss"], color="blue")
-    plt.plot(losses_charts["val"]["step"], losses_charts["val"]["loss"], color="Red")
-    plt.legend(['Train Loss', 'Test Loss'], loc='upper right')
-    plt.xlabel('number of training examples seen')
-    plt.ylabel('negative log likelihood loss')
-    plt.savefig(os.path.join(out_dir, "loss_charts.png"))
-
-    plt.figure(3)
-    plt.plot(losses_charts["val"]["step"], losses_charts["val"]["accuracy"], color="Red")
-    plt.legend(['Test Accuracy'], loc='upper right')
-    plt.xlabel('number of training examples seen')
-    plt.ylabel('Test accuracy')
-    plt.savefig(os.path.join(out_dir, "accuracy.png"))
-    plt.show()
+    plot_results(losses_charts, out_dir)
+    # plt.show()
 
     # add any figures as needed.
 
