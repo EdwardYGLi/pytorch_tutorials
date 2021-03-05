@@ -44,7 +44,7 @@ def plot_results(losses_charts, out_dir):
     plt.savefig(os.path.join(out_dir, "loss_charts.png"))
 
     plt.figure(3)
-    # plt accuracy/precision/recall/f1 score 
+    # plt accuracy/precision/recall/f1 score
     losses_charts["val"]["accuracy"] = []
     losses_charts["val"]["precision"] = []
     losses_charts["val"]["recall"] = []
