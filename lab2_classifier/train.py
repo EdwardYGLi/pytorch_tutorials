@@ -44,6 +44,7 @@ def plot_results(losses_charts, out_dir):
     plt.savefig(os.path.join(out_dir, "loss_charts.png"))
 
     plt.figure(3)
+    # plt accuracy/precision/recall/f1 score 
     losses_charts["val"]["accuracy"] = []
     losses_charts["val"]["precision"] = []
     losses_charts["val"]["recall"] = []
@@ -68,7 +69,7 @@ def plot_results(losses_charts, out_dir):
     plt.ylabel('Test accuracy')
     plt.savefig(os.path.join(out_dir, "accuracy.png"))
 
-    # for each class plot a figure
+    # for each class plot a figure for precision recall f1 score
     for cls in range(10):
         cls_str = str(cls)
         precision = []
@@ -90,7 +91,7 @@ def plot_results(losses_charts, out_dir):
         plt.xlabel('number of training examples seen')
         plt.ylabel('Precision')
         plt.title("{} class statistics".format(cls_str))
-    plt.savefig(os.path.join(out_dir, "{}_class_stats.png".format(cls_str)))
+        plt.savefig(os.path.join(out_dir, "digit_{}_class_stats.png".format(cls_str)))
 
 
 def train(args):
