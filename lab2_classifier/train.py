@@ -199,7 +199,7 @@ def train(args):
                         metrics.classification_report(targ_epoch, pred_epoch, output_dict=True))
 
                     # we will only aggregate loss for validation on an epoch basis
-                    losses_charts[phase]["loss"].append(epoch_loss / len(dataloader.dataset))
+                    losses_charts[phase]["loss"].append(epoch_loss / len(dataloader))
                     losses_charts[phase]["step"].append(epoch * len(dataloaders["train"].dataset))
 
     plot_results(losses_charts, out_dir)
