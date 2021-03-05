@@ -201,11 +201,8 @@ def train(args):
                     # we will only aggregate loss for validation on an epoch basis
                     losses_charts[phase]["loss"].append(epoch_loss / len(dataloader))
                     losses_charts[phase]["step"].append(epoch * len(dataloaders["train"].dataset))
-
+    torch.save(model.state_dict(), os.path.join(out_dir, "model.pt"))
     plot_results(losses_charts, out_dir)
-    # plt.show()
-
-    # add any figures as needed.
 
 
 if __name__ == "__main__":
